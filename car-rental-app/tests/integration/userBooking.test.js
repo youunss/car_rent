@@ -45,13 +45,18 @@ describe('User Booking API Endpoints (/api/bookings)', () => {
     await Booking.deleteMany({});
   });
 
+  const futureStart = new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0];
+  const futureEnd = new Date(Date.now() + 86400000 * 8).toISOString().split('T')[0];
+  const futureStartOver = new Date(Date.now() + 86400000 * 6).toISOString().split('T')[0];
+  const futureEndOver = new Date(Date.now() + 86400000 * 9).toISOString().split('T')[0];
+
   // --- POST /api/bookings (Create Booking) ---
   describe('POST /api/bookings', () => {
     it('should create a booking successfully for an available car', async () => {
       const bookingData = { 
         carId: testCar1._id.toString(), 
-        startDate: '2024-05-10', 
-        endDate: '2024-05-12' 
+        startDate: futureStart, 
+        endDate: futureEnd 
       };
       const res = await userAgent
         .post('/api/bookings')
@@ -70,7 +75,7 @@ describe('User Booking API Endpoints (/api/bookings)', () => {
     });
 
     it('should return 400 if car is not available (e.g., maintenance)', async () => {
-      const bookingData = { carId: testCar2._id.toString(), startDate: '2024-05-10', endDate: '2024-05-12' };
+      const bookingData = { carId: testCar2._id.toString(), startDate: futureStart, endDate: futureEnd };
       const res = await userAgent
         .post('/api/bookings')
         .set('CSRF-Token', csrfToken)
@@ -84,13 +89,13 @@ describe('User Booking API Endpoints (/api/bookings)', () => {
       await Booking.create({
         user: regularUser._id,
         car: testCar1._id,
-        startDate: new Date('2024-05-10'),
-        endDate: new Date('2024-05-12'),
+        startDate: new Date(futureStart),
+        endDate: new Date(futureEnd),
         totalPrice: 120,
         status: 'confirmed'
       });
       
-      const bookingData = { carId: testCar1._id.toString(), startDate: '2024-05-11', endDate: '2024-05-13' }; // Overlapping
+      const bookingData = { carId: testCar1._id.toString(), startDate: futureStartOver, endDate: futureEndOver }; // Overlapping
       const res = await userAgent
         .post('/api/bookings')
         .set('CSRF-Token', csrfToken)
@@ -100,7 +105,7 @@ describe('User Booking API Endpoints (/api/bookings)', () => {
     });
     
     it('should return 422 for validation errors (e.g., end date before start date)', async () => {
-      const bookingData = { carId: testCar1._id.toString(), startDate: '2024-05-12', endDate: '2024-05-10' };
+      const bookingData = { carId: testCar1._id.toString(), startDate: futureEnd, endDate: futureStart };
       const res = await userAgent
         .post('/api/bookings')
         .set('CSRF-Token', csrfToken)
@@ -123,15 +128,15 @@ describe('User Booking API Endpoints (/api/bookings)', () => {
     });
 
     it('should return a list of the user\'s bookings', async () => {
-      await Booking.create({ user: regularUser._id, car: testCar1._id, startDate: '2024-06-01', endDate: '2024-06-03', totalPrice: 180 });
-      const otherUser = await User.create({username: 'otherbooker', email:'other@mail.com', password: '123'});
-      await Booking.create({ user: otherUser._id, car: testCar1._id, startDate: '2024-06-05', endDate: '2024-06-07', totalPrice: 180 });
+      await Booking.create({ user: regularUser._id, car: testCar1._id, startDate: futureStart, endDate: futureEnd, totalPrice: 180 });
+      const otherUser = await User.create({username: 'otherbooker', email:'other@mail.com', password: 'password123'});
+      await Booking.create({ user: otherUser._id, car: testCar1._id, startDate: futureStartOver, endDate: futureEndOver, totalPrice: 180 });
       
       const res = await userAgent.get('/api/bookings/my-bookings').expect(200);
       expect(res.body.status).toBe('success');
       expect(res.body.data.bookings.length).toBe(1);
-      // Assuming controller populates user object, check user ID
-      expect(res.body.data.bookings[0].user._id.toString()).toBe(regularUser._id.toString());
+      const bookingUserId = res.body.data.bookings[0].user._id || res.body.data.bookings[0].user;
+      expect(bookingUserId.toString()).toBe(regularUser._id.toString());
     });
   });
 
@@ -142,8 +147,8 @@ describe('User Booking API Endpoints (/api/bookings)', () => {
         userBooking = await Booking.create({ 
             user: regularUser._id, 
             car: testCar1._id, 
-            startDate: new Date('2024-07-10'), 
-            endDate: new Date('2024-07-12'), 
+            startDate: new Date(futureStart), 
+            endDate: new Date(futureEnd), 
             totalPrice: 120, 
             status: 'pending' 
         });
@@ -161,8 +166,8 @@ describe('User Booking API Endpoints (/api/bookings)', () => {
     });
 
     it('should return 403 if user tries to cancel another user\'s booking', async () => {
-      const otherUser = await User.create({username: 'another', email:'another@mail.com', password: '123'});
-      const otherBooking = await Booking.create({ user: otherUser._id, car: testCar1._id, startDate: '2024-08-01', endDate: '2024-08-03', totalPrice: 180, status: 'pending' });
+      const otherUser = await User.create({username: 'another', email:'another@mail.com', password: 'password123'});
+      const otherBooking = await Booking.create({ user: otherUser._id, car: testCar1._id, startDate: futureStartOver, endDate: futureEndOver, totalPrice: 180, status: 'pending' });
       
       await userAgent
         .post(`/api/bookings/${otherBooking._id}/cancel`)
@@ -201,7 +206,7 @@ describe('User Booking API Endpoints (/api/bookings)', () => {
         // However, ensureAuthenticated should reject before CSRF check for this case.
         await freshAgent.post('/api/bookings')
             // .set('CSRF-Token', 'someGuestTokenIfAvailable') // Not strictly needed if auth fails first
-            .send({ carId: testCar1._id.toString(), startDate: '2024-09-01', endDate: '2024-09-03' })
+            .send({ carId: testCar1._id.toString(), startDate: futureStart, endDate: futureEnd })
             .expect(401); // ensureAuthenticated should block
     });
   });

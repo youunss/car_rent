@@ -81,6 +81,7 @@ describe('Auth API Endpoints', () => {
   // --- Login ---
   describe('POST /api/auth/login', () => {
     beforeEach(async () => {
+      await User.deleteOne({ email: 'login@example.com' });
       // Create a user to login with
       const user = new User({ username: 'loginuser', email: 'login@example.com', password: 'password123' });
       await user.save(); // Password gets hashed
@@ -151,6 +152,7 @@ describe('Auth API Endpoints', () => {
   // --- Logout ---
   describe('POST /api/auth/logout', () => {
     beforeEach(async () => {
+        await User.deleteOne({ email: 'logout@example.com' });
         // Ensure a user is logged in using the 'agent'
         const user = new User({ username: 'logoutuser', email: 'logout@example.com', password: 'password123' });
         await user.save();

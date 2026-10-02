@@ -3,7 +3,14 @@ const carController = require('../../../controllers/carController'); // Adjust p
 const Car = require('../../../models/Car');
 const { successResponse, errorResponse } = require('../../../utils/apiResponse');
 
-jest.mock('../../../models/Car');
+jest.mock('../../../models/Car', () => ({
+  find: jest.fn(),
+  findById: jest.fn(),
+  countDocuments: jest.fn(),
+  create: jest.fn(),
+  findByIdAndUpdate: jest.fn(),
+  findByIdAndDelete: jest.fn(),
+}));
 jest.mock('../../../utils/apiResponse', () => ({
   successResponse: jest.fn(),
   errorResponse: jest.fn(),

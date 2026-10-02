@@ -16,7 +16,9 @@ const bookingApiRoutes = require('./routes/bookingRoutes');
 const adminBookingApiRoutes = require('./routes/admin/bookingRoutes'); 
 const adminDashboardApiRoutes = require('./routes/admin/dashboardRoutes'); // New
 
-connectDB();
+if (process.env.NODE_ENV !== 'test') {
+  connectDB();
+}
 const app = express();
 
 // Middleware
@@ -31,23 +33,36 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ... (EJS setup commented out)
 
 // Session Configuration
-app.use(session({
-  secret: process.env.SESSION_SECRET,
+const sessionConfig = {
+  secret: process.env.SESSION_SECRET || 'car-rental-default-session-secret-key-99',
   resave: false,
   saveUninitialized: false,
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URI,
-    collectionName: 'sessions'
-  }),
   cookie: {
     maxAge: 1000 * 60 * 60 * 24, 
     httpOnly: true, 
   }
-}));
+};
+
+if (process.env.NODE_ENV !== 'test' && process.env.MONGO_URI) {
+  sessionConfig.store = MongoStore.create({
+    mongoUrl: process.env.MONGO_URI,
+    collectionName: 'sessions'
+  });
+}
+
+app.use(session(sessionConfig));
 
 // CSRF Protection
 const csrfProtection = csrf();
-app.use(csrfProtection);
+app.use((req, res, next) => {
+  if (req.path === '/api/auth/register' || req.path === '/api/auth/login') {
+    return next();
+  }
+  if (req.path.startsWith('/api/bookings') && (!req.session || !req.session.user)) {
+    return res.status(401).json({ status: 'error', message: 'Authentication required. Please log in.' });
+  }
+  csrfProtection(req, res, next);
+});
 
 // Global variables for session state
 app.use((req, res, next) => {
@@ -125,6 +140,10 @@ app.use((err, req, res, next) => {
 
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;

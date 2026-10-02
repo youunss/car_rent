@@ -107,6 +107,7 @@ describe('Admin Car API Endpoints', () => {
   // --- GET /api/admin/cars (List Cars) ---
   describe('GET /api/admin/cars', () => {
     it('should return a list of cars', async () => {
+      await Car.deleteMany({});
       await Car.create({ make: 'TestCar1', model: 'ModelA', year: 2020, pricePerDay: 50 });
       await Car.create({ make: 'TestCar2', model: 'ModelB', year: 2021, pricePerDay: 70 });
 
@@ -190,6 +191,8 @@ describe('Admin Car API Endpoints', () => {
 
     beforeEach(async () => {
         // Create and login as a non-admin user
+        await User.deleteOne({ email: 'regular@example.com' });
+        await User.deleteOne({ username: 'regularuser' });
         const regularUser = new User({ username: 'regularuser', email: 'regular@example.com', password: 'password123', role: 'user' });
         await regularUser.save();
         

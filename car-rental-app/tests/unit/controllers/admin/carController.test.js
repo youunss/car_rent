@@ -6,7 +6,17 @@ const { validationResult } = require('express-validator'); // To mock its return
 const fs = require('fs');
 const path = require('path');
 
-jest.mock('../../../../models/Car');
+jest.mock('../../../../models/Car', () => {
+  const mockCar = jest.fn().mockImplementation(function (data) {
+    Object.assign(this, data);
+  });
+  mockCar.find = jest.fn();
+  mockCar.findById = jest.fn();
+  mockCar.findByIdAndDelete = jest.fn();
+  mockCar.countDocuments = jest.fn();
+  mockCar.prototype.save = jest.fn().mockResolvedValue(this);
+  return mockCar;
+});
 jest.mock('../../../../utils/apiResponse');
 jest.mock('express-validator');
 jest.mock('fs'); // Mock the fs module
@@ -142,7 +152,7 @@ describe('Admin Car Controller', () => {
         // Manually assign properties that would be set by Mongoose setter/getter or default
         status: 'available', 
         features: [],
-        save: jest.fn().mockResolvedValueThis() // Mock save on the instance
+        save: jest.fn().mockResolvedValue(null) // Mock save on the instance
       };
       Car.findById.mockResolvedValue(mockCarInstance);
 

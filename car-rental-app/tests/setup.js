@@ -13,14 +13,7 @@ beforeAll(async () => {
   });
 });
 
-// Clear all data from all collections before each test
-beforeEach(async () => {
-  const collections = mongoose.connection.collections;
-  for (const key in collections) {
-    const collection = collections[key];
-    await collection.deleteMany({}); // Deletes all documents
-  }
-});
+
 
 afterAll(async () => {
   await mongoose.disconnect();

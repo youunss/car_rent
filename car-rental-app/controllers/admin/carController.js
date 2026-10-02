@@ -44,8 +44,8 @@ exports.addCar = async (req, res, next) => {
             features: features ? features.split(',').map(feature => feature.trim()) : [],
             // addedBy: req.session.user.id // If implemented
         });
-        await newCar.save();
-        return successResponse(res, 'Car added successfully.', { car: newCar }, 201);
+        const savedCar = await newCar.save();
+        return successResponse(res, 'Car added successfully.', { car: savedCar }, 201);
     } catch (err) {
         // Handle potential duplicate key errors or other DB errors if not caught by global handler
         if (err.code === 11000) {

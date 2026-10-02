@@ -10,13 +10,9 @@
 const successResponse = (res, message = 'Operation successful', data = null, statusCode = 200) => {
   const response = {
     status: 'success',
+    message: message || 'Operation successful',
+    data: data,
   };
-  if (message) {
-    response.message = message;
-  }
-  if (data !== null) { // Ensure data is only added if it's not null
-    response.data = data;
-  }
   res.status(statusCode).json(response);
 };
 
@@ -32,7 +28,7 @@ const successResponse = (res, message = 'Operation successful', data = null, sta
 const errorResponse = (res, message = 'An error occurred', statusCode = 400, errors = null) => {
   const response = {
     status: 'error',
-    message,
+    message: message || 'An error occurred',
   };
   if (errors) {
     response.errors = errors;

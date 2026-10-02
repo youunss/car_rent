@@ -3,7 +3,9 @@ module.exports = {
     if (req.session && req.session.user) {
       return next();
     }
-    req.flash('error_msg', 'Please log in to view this resource.');
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('json')) || req.originalUrl.startsWith('/api')) {
+      return res.status(401).json({ status: 'error', message: 'Authentication required. Please log in.' });
+    }
     res.redirect('/auth/login');
   },
 
@@ -11,17 +13,16 @@ module.exports = {
     if (req.session && req.session.user && req.session.role === 'admin') {
       return next();
     }
-    req.flash('error_msg', 'You are not authorized to view this resource.');
-    // Or redirect to a specific 'unauthorized' page or homepage
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('json')) || req.originalUrl.startsWith('/api')) {
+      return res.status(403).json({ status: 'error', message: 'Forbidden. Admin role required.' });
+    }
     res.redirect('/'); 
   },
 
-  // Optional: Forward authenticated users away from login/register pages
   forwardAuthenticated: function(req, res, next) {
-    if (req.session && !req.session.user) { // User is not authenticated, proceed
+    if (req.session && !req.session.user) {
       return next();
     }
-    // User is authenticated, redirect them from login/register pages
     res.redirect('/'); 
   }
 };

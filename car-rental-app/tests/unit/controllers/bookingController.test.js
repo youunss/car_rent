@@ -6,8 +6,22 @@ const { successResponse, errorResponse } = require('../../../utils/apiResponse')
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
 
-jest.mock('../../../models/Booking');
-jest.mock('../../../models/Car');
+jest.mock('../../../models/Booking', () => {
+  const mockBooking = jest.fn().mockImplementation(function (data) {
+    Object.assign(this, data);
+  });
+  mockBooking.find = jest.fn();
+  mockBooking.findOne = jest.fn();
+  mockBooking.findById = jest.fn();
+  mockBooking.findByIdAndUpdate = jest.fn();
+  mockBooking.prototype.save = jest.fn().mockResolvedValue(this);
+  return mockBooking;
+});
+jest.mock('../../../models/Car', () => ({
+  findById: jest.fn(),
+  find: jest.fn(),
+  findByIdAndUpdate: jest.fn(),
+}));
 jest.mock('../../../utils/apiResponse');
 jest.mock('express-validator');
 
@@ -38,6 +52,9 @@ describe('User Booking Controller', () => {
 
   // --- createBooking ---
   describe('createBooking', () => {
+    const futureStart = new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0];
+    const futureEnd = new Date(Date.now() + 86400000 * 8).toISOString().split('T')[0];
+
     beforeEach(() => {
       validationResult.mockReturnValue({ isEmpty: () => true, array: () => [] }); // Default to no validation errors
       // Mock Car.findById to return an available car by default for successful booking tests
@@ -51,7 +68,7 @@ describe('User Booking Controller', () => {
     });
 
     it('should create a booking successfully', async () => {
-      mockReq.body = { carId: 'carId456', startDate: '2024-08-10', endDate: '2024-08-12' }; // Future date
+      mockReq.body = { carId: 'carId456', startDate: futureStart, endDate: futureEnd }; // Future date
       const savedBookingInstance = { 
         _id: 'bookingId789', 
         user: 'userId123', 
@@ -102,28 +119,28 @@ describe('User Booking Controller', () => {
     });
 
     it('should return 404 if car not found', async () => {
-        mockReq.body = { carId: 'nonExistentCar', startDate: '2024-08-10', endDate: '2024-08-12' };
+        mockReq.body = { carId: 'nonExistentCar', startDate: futureStart, endDate: futureEnd };
         Car.findById.mockResolvedValue(null); // Car not found
         await bookingController.createBooking(mockReq, mockRes, mockNext);
         expect(errorResponse).toHaveBeenCalledWith(mockRes, 'Car not found.', 404);
     });
     
     it('should return 400 if car is not available (simple status check)', async () => {
-        mockReq.body = { carId: 'carId456', startDate: '2024-08-10', endDate: '2024-08-12' };
+        mockReq.body = { carId: 'carId456', startDate: futureStart, endDate: futureEnd };
         Car.findById.mockResolvedValue({ _id: 'carId456', status: 'maintenance', pricePerDay: 50 });
         await bookingController.createBooking(mockReq, mockRes, mockNext);
         expect(errorResponse).toHaveBeenCalledWith(mockRes, 'Car is not currently available for booking (might be under maintenance or generally unavailable).', 400);
     });
 
     it('should return 409 if booking conflict exists', async () => {
-        mockReq.body = { carId: 'carId456', startDate: '2024-08-10', endDate: '2024-08-12' };
+        mockReq.body = { carId: 'carId456', startDate: futureStart, endDate: futureEnd };
         Booking.findOne.mockResolvedValue({ _id: 'existingBooking' }); // Conflicting booking found
         await bookingController.createBooking(mockReq, mockRes, mockNext);
         expect(errorResponse).toHaveBeenCalledWith(mockRes, 'Car is already booked for the selected dates.', 409);
     });
     
     it('should call next(err) if save fails', async () => {
-        mockReq.body = { carId: 'carId456', startDate: '2024-08-10', endDate: '2024-08-12' };
+        mockReq.body = { carId: 'carId456', startDate: futureStart, endDate: futureEnd };
         const dbError = new Error("Save failed");
         Booking.prototype.save.mockRejectedValue(dbError);
         await bookingController.createBooking(mockReq, mockRes, mockNext);

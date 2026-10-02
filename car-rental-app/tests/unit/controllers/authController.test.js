@@ -4,7 +4,17 @@ const User = require('../../../models/User');
 const { successResponse, errorResponse } = require('../../../utils/apiResponse');
 
 // Mock models and utilities
-jest.mock('../../../models/User');
+jest.mock('../../../models/User', () => {
+  const mockUser = jest.fn().mockImplementation(function (data) {
+    Object.assign(this, { role: 'user', ...data });
+    this._id = 'someUserId';
+  });
+  mockUser.findOne = jest.fn();
+  mockUser.findById = jest.fn();
+  mockUser.prototype.save = jest.fn().mockResolvedValue(this);
+  mockUser.prototype.comparePassword = jest.fn();
+  return mockUser;
+});
 jest.mock('../../../utils/apiResponse', () => ({
   successResponse: jest.fn(),
   errorResponse: jest.fn(),

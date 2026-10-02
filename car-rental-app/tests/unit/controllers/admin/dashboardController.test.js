@@ -5,9 +5,17 @@ const Car = require('../../../../models/Car');
 const Booking = require('../../../../models/Booking');
 const { successResponse, errorResponse } = require('../../../../utils/apiResponse');
 
-jest.mock('../../../../models/User');
-jest.mock('../../../../models/Car');
-jest.mock('../../../../models/Booking');
+jest.mock('../../../../models/User', () => ({
+  countDocuments: jest.fn(),
+}));
+jest.mock('../../../../models/Car', () => ({
+  countDocuments: jest.fn(),
+}));
+jest.mock('../../../../models/Booking', () => ({
+  countDocuments: jest.fn(),
+  find: jest.fn(),
+  aggregate: jest.fn(),
+}));
 jest.mock('../../../../utils/apiResponse');
 
 describe('Admin Dashboard Controller', () => {

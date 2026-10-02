@@ -6,7 +6,17 @@ const { successResponse, errorResponse } = require('../../../../utils/apiRespons
 const { validationResult } = require('express-validator');
 const mongoose = require('mongoose');
 
-jest.mock('../../../../models/Booking');
+jest.mock('../../../../models/Booking', () => {
+  const mockBooking = jest.fn().mockImplementation(function (data) {
+    Object.assign(this, data);
+    this.save = jest.fn().mockResolvedValue(this);
+  });
+  mockBooking.find = jest.fn();
+  mockBooking.findById = jest.fn();
+  mockBooking.countDocuments = jest.fn();
+  mockBooking.prototype.save = jest.fn();
+  return mockBooking;
+});
 // jest.mock('../../../../models/Car'); 
 jest.mock('../../../../utils/apiResponse');
 jest.mock('express-validator');
@@ -128,41 +138,20 @@ describe('Admin Booking Controller', () => {
         _id: 'bookingToUpdate', 
         status: 'pending',
         save: jest.fn().mockResolvedValue(true),
-        // Mock the populate chain for the final response object
-        populate: jest.fn().mockImplementation(function(path) {
-            if (path === 'user' || path === 'car') {
-                // Simulate adding populated data for the test
-                this[`_populated${path}`] = { name: `Mocked ${path}` }; 
-            }
-            // If it's the end of a populate chain (or the object itself if no more populates)
-            // for simplicity, we can assume it resolves to 'this' or a promise of 'this'
-            // In a real scenario, if populate().populate().exec() is used, the last one is a promise.
-            // Here, we just ensure it's chainable and can be resolved if awaited.
-            if (this.populate.mock.calls.length >= 2) { // Assuming two populates
-                return Promise.resolve(this);
-            }
-            return this;
-        })
+      };
+      const mockQuery = {
+        populate: jest.fn().mockReturnThis(),
+        then: (resolve) => resolve(mockBookingInstance),
+        catch: (reject) => {}
       };
       // Default findById for successful update
-      Booking.findById.mockResolvedValue(mockBookingInstance); 
+      Booking.findById.mockReturnValue(mockQuery); 
+      validationResult.mockReturnValue({ isEmpty: () => true, array: () => [] });
     });
     
     it('should update booking status successfully', async () => {
       mockReq.params.id = 'bookingToUpdate';
       mockReq.body = { status: 'confirmed' };
-      
-      // When findById is called after save for populating the response
-      Booking.findById.mockImplementation(id => {
-        if (id === 'bookingToUpdate') {
-          return Promise.resolve({
-            ...mockBookingInstance, // Spread original mock instance data
-            status: 'confirmed',    // Reflect the new status for the response
-            populate: mockBookingInstance.populate // Re-use the populate mock from beforeEach
-          });
-        }
-        return Promise.resolve(null);
-      });
 
       await adminBookingController.updateBookingStatus(mockReq, mockRes, mockNext);
 
