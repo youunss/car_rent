@@ -1,6 +1,0 @@
-node_modules/
-.env
-
-# Ignore uploaded car images
-public/uploads/cars/*
-!public/uploads/cars/.gitkeep
